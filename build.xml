@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+
+<project name="DicomEditor" basedir="." default="all">
+
+	<property name="build" value="${basedir}/build"/>
+	<property name="products" value="${basedir}/products"/>
+	<property name="libraries" value="${basedir}/libraries"/>
+	<property name="documentation" value="${basedir}/documentation"/>
+
+	<property name="source" value="${basedir}/source"/>
+	<property name="java" value="${source}/java"/>
+	<property name="files" value="${source}/files"/>
+	<property name="resources" value="${source}/resources"/>
+	<property name="installer" value="org/rsna/installer"/>
+	<property name="dicomeditor" value="org/rsna/dicomeditor"/>
+
+	<property name="ctp" value="/Development/CTP"/>
+
+	<property name="title" value="FileSender"/>
+	<property name="copyright" value="Copyright 2012 Radiological Society of North America"/>
+
+	<path id="classpath">
+		<pathelement location="${libraries}/dcm4che.jar"/>
+		<pathelement location="${libraries}/log4j.jar"/>
+		<pathelement location="${libraries}/getopt.jar"/>
+		<pathelement location="${libraries}/CTP.jar"/>
+		<pathelement location="${libraries}/util.jar"/>
+	</path>
+
+	<target name="init">
+		<tstamp>
+			<format property="today" pattern="yyyy.MM.dd"/>
+			<format property="now" pattern="HH:mm:ss z"/>
+		</tstamp>
+		<echo message="Time now ${now}"/>
+		<echo message="Building version ${version}"/>
+		<echo message="ant.java.version = ${ant.java.version}" />
+		<mkdir dir="${build}"/>
+		<mkdir dir="${products}"/>
+	</target>
+
+	<target name="clean">
+		<delete dir="${build}" failonerror="false"/>
+		<delete dir="${documentation}" failonerror="false"/>
+	</target>
+
+	<target name="getLibraryJars">
+		<copy overwrite="true" todir="${libraries}">
+			<fileset dir="${ctp}/libraries">
+				<include name="CTP.jar"/>
+				<include name="dcm4che.jar"/>
+				<include name="dcm4che-imageio-rle-2.0.25.jar"/>
+				<include name="log4j.jar"/>
+				<include name="util.jar"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="dicomeditor" depends="init, getLibraryJars">
+
+		<javac srcdir="${java}" destdir="${build}" optimize="on"
+			classpathref="classpath"
+			includeantruntime="false"
+			debug="true" debuglevel="lines,vars,source"/>
+
+		<copy overwrite="true" todir="${build}">
+			<fileset dir="${resources}"/>
+		</copy>
+
+		<jar destfile="${products}/DicomEditor.jar">
+			<manifest>
+				<attribute name="Main-Class" value="org.rsna.dicomeditor.DicomEditor"/>
+				<attribute name="Class-Path" value="dcm4che.jar getopt.jar log4j.jar CTP.jar util.jar"/>
+			</manifest>
+			<fileset dir="${build}"
+				includes="${dicomeditor}/** icons/**"
+				excludes="${dicomeditor}/Installer**"/>
+		</jar>
+
+		<mkdir dir="${build}/DicomEditor"/>
+
+		<copy overwrite="true" todir="${build}/DicomEditor">
+			<fileset dir="${products}" includes="DicomEditor.jar"/>
+			<fileset dir="${libraries}" includes="dcm4che.jar"/>
+			<fileset dir="${libraries}" includes="dicom.jar"/>
+			<fileset dir="${libraries}" includes="log4j.jar"/>
+			<fileset dir="${libraries}" includes="getopt.jar"/>
+			<fileset dir="${libraries}" includes="CTP.jar"/>
+			<fileset dir="${libraries}" includes="util.jar"/>
+			<fileset dir="${files}" includes="*.*"/>
+		</copy>
+
+		<jar destfile="${products}/DicomEditor-installer.jar">
+			<manifest>
+				<attribute name="Main-Class" value="org.rsna.dicomeditor.Installer"/>
+				<attribute name="Implementation-Version" value="${today} @ ${now}"/>
+				<attribute name="Date" value="${today} at ${now}"/>
+				<attribute name="Description" value="DICOM Editor/Anonymizer/Viewer Tool"/>
+			</manifest>
+			<fileset dir="${build}"
+				includes="${dicomeditor}/Installer** ${installer}/** DicomEditor/**"/>
+		</jar>
+
+		<copy overwrite="true"
+			todir="D:/JavaPrograms/NewDicomEditor/DicomEditor"
+			file="${products}/DicomEditor.jar">
+		</copy>
+		<!--<delete file="${products}/DicomEditor.jar"/>-->
+
+	</target>
+
+	<target name="javadocs">
+		<mkdir dir="${documentation}"/>
+		<javadoc destdir="${documentation}" sourcepath="${java}" classpathref="classpath"
+			doctitle="${title}" windowtitle="${title}" bottom="${copyright}">
+			<package name="*"/>
+		</javadoc>
+	</target>
+
+	<target name="all" depends="clean, dicomeditor, javadocs"/>
+
+</project>

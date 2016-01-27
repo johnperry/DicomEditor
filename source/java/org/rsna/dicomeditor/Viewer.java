@@ -1,0 +1,577 @@
+/*---------------------------------------------------------------
+*  Copyright 2005 by the Radiological Society of North America
+*
+*  This source software is released under the terms of the
+*  RSNA Public License (http://mirc.rsna.org/rsnapubliclicense)
+*----------------------------------------------------------------*/
+
+package org.rsna.dicomeditor;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.image.*;
+import java.io.*;
+import java.net.*;
+import java.util.*;
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.event.*;
+import org.apache.log4j.*;
+import org.rsna.ctp.objects.DicomObject;
+import org.rsna.ui.*;
+import org.rsna.util.*;
+
+/**
+ * A JPanel that provides a DICOM viewer.
+ */
+public class Viewer extends JPanel implements ActionListener, FileListener, MouseWheelListener {
+
+	static final Logger logger = Logger.getLogger(Viewer.class);
+
+	JFileChooser saveAsChooser = null;
+	int jpegQuality = -1;
+	DicomObject dicomObject = null;
+    ButtonPanel buttonPanel;
+    ImagePanel imagePanel;
+    int currentFrame = 0;
+    int nFrames = 0;
+    double currentZoom = 1.0;
+    JScrollPane jsp;
+    boolean isDragging = false;
+
+	/**
+	 * Class constructor; creates a Viewer JPanel.
+	 */
+    public Viewer() {
+		super();
+		this.setLayout(new BorderLayout());
+		buttonPanel = new ButtonPanel();
+		imagePanel = new ImagePanel();
+		jsp = new JScrollPane();
+		jsp.getVerticalScrollBar().setUnitIncrement(25);
+		jsp.setViewportView(imagePanel);
+		this.add(buttonPanel, BorderLayout.NORTH);
+		this.add(jsp, BorderLayout.CENTER);
+		this.setBackground(Configuration.getInstance().background);
+		buttonPanel.addActionListener(this);
+		buttonPanel.addMouseWheelListener(this);
+		Dragger dragger = new Dragger();
+		imagePanel.addMouseListener(dragger);
+		imagePanel.addMouseMotionListener(dragger);
+		imagePanel.addMouseWheelListener(dragger);
+    }
+
+    class Dragger extends MouseInputAdapter {
+		int originalX = 0;
+		int originalY = 0;
+		int originalScrollX = 0;
+		int originalScrollY = 0;
+		int originalWW = 0;
+		int originalWL = 0;
+		long startTime = 0;
+		public Dragger() {
+			super();
+			jsp.setWheelScrollingEnabled(false);
+		}
+		public void mousePressed(MouseEvent e) {
+			originalX = e.getXOnScreen();
+			originalY = e.getYOnScreen();
+			originalScrollX = jsp.getHorizontalScrollBar().getValue();
+			originalScrollY = jsp.getVerticalScrollBar().getValue();
+			originalWW = buttonPanel.ww.getValue();
+			originalWL = buttonPanel.wl.getValue();
+			isDragging = true;
+			startTime = System.currentTimeMillis();
+			isDragging = true;
+			setTheCursor();
+		}
+		public void mouseReleased(MouseEvent e) {
+			isDragging = false;
+			if (buttonPanel.wwwl.isPressed()) {
+				displayFrame(currentFrame, currentZoom);
+			}
+			setTheCursor();
+		}
+		public void mouseDragged(MouseEvent e) {
+			if (isDragging) {
+				int currentX = e.getXOnScreen();
+				int currentY = e.getYOnScreen();
+				int deltaX = currentX - originalX;
+				int deltaY = currentY - originalY;
+				if (buttonPanel.drag.isPressed()) {
+					int newScrollX = originalScrollX - deltaX;
+					int newScrollY = originalScrollY - deltaY;
+					jsp.getHorizontalScrollBar().setValue(newScrollX);
+					jsp.getVerticalScrollBar().setValue(newScrollY);
+				}
+				else if (buttonPanel.wwwl.isPressed()) {
+					buttonPanel.wl.setValue(originalWL + deltaY);
+					buttonPanel.ww.setValue(originalWW + deltaX);
+					long time = System.currentTimeMillis();
+					if ((time - startTime) > 500) {
+						displayFrame(currentFrame, currentZoom);
+						startTime = System.currentTimeMillis();
+					}
+				}
+			}
+		}
+		public void mouseWheelMoved(MouseWheelEvent e) {
+			if (dicomObject != null) {
+				boolean altKeyDown = (e.getModifiersEx() & e.ALT_DOWN_MASK) == e.ALT_DOWN_MASK;
+				int delta = -e.getWheelRotation();
+				if (buttonPanel.zoom.isPressed() && !altKeyDown) {
+					if (delta > 0) displayFrame(currentFrame, currentZoom + 0.1);
+					if (delta < 0) displayFrame(currentFrame, currentZoom - 0.1);
+				}
+				else if (buttonPanel.drag.isPressed() && altKeyDown) {
+					if (delta > 0) displayFrame(currentFrame, currentZoom + 0.1);
+					if (delta < 0) displayFrame(currentFrame, currentZoom - 0.1);					
+				}
+				else {
+					if (delta > 0) displayFrame(currentFrame+1, currentZoom);
+					if (delta < 0) displayFrame(currentFrame-1, currentZoom);
+				}
+			}
+		}
+	}
+
+	/**
+	 * The FileListener implementation.
+	 * @param event the event containing the current file selection.
+	 */
+	public void fileEventOccurred(FileEvent event) {
+		if (event.isSELECT()) {
+			try {
+				File file = event.getFile();
+				if (file.isFile()) {
+					dicomObject = new DicomObject(file);
+					if (dicomObject.isImage()) {
+						nFrames = Math.max(dicomObject.getNumberOfFrames(), 1);
+						setWWWL(dicomObject);
+						currentZoom = 1.0;
+						jsp.getHorizontalScrollBar().setValue(0);
+						jsp.getVerticalScrollBar().setValue(0);
+						displayFrame(0, 1.0);
+						setEnables();
+						setTheCursor();
+						return;
+					}
+				}
+			}
+			catch (Exception unable) {
+				dicomObject = null;
+				imagePanel.clear();
+				setEnables();
+			}
+		}
+	}
+	
+	private void setWWWL(DicomObject dob) {
+		int ww = dob.getWindowWidth();
+		int wl = dob.getWindowCenter();
+		if ((ww == 0) && (wl == 0)) {
+			int bs = dob.getBitsStored();
+			wl = 1 << (bs-1);
+			ww = wl / 2;
+		}
+		buttonPanel.ww.setValue(ww);
+		buttonPanel.wl.setValue(wl);
+	}
+	
+	private void setTheCursor() {
+		if (buttonPanel.drag.isPressed()) {
+			if (isDragging) {
+				imagePanel.setCursor(CustomCursors.getInstance().getCursor("cursor_drag_hand", 16, 16));
+			}
+			else {
+				imagePanel.setCursor(CustomCursors.getInstance().getCursor("cursor_hand", 16, 16));
+			}
+		}
+		else if (buttonPanel.wwwl.isPressed()) {
+			imagePanel.setCursor(CustomCursors.getInstance().getCursor("wwwl", 16, 16));
+		}
+		else if (buttonPanel.zoom.isPressed()) {
+			imagePanel.setCursor(CustomCursors.getInstance().getCursor("zoom", 16, 16));
+		}
+	}
+	
+    /**
+     * The ActionListener implementation; listens for buttons on the ButtonPanel.
+     * @param event the event indicating which button was clicked.
+     */
+    public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+		if (source.equals(buttonPanel.firstFrame)) displayFrame(0, currentZoom);
+		else if (source.equals(buttonPanel.prevFrame)) displayFrame(currentFrame-1, currentZoom);
+		else if (source.equals(buttonPanel.nextFrame)) displayFrame(currentFrame+1, currentZoom);
+		else if (source.equals(buttonPanel.lastFrame)) {
+			displayFrame(nFrames-1, currentZoom);
+		}
+		else if (source.equals(buttonPanel.drag)) {
+			buttonPanel.drag.setPressed(true);
+			buttonPanel.wwwl.setPressed(false);
+			buttonPanel.zoom.setPressed(false);
+		}
+		else if (source.equals(buttonPanel.wwwl)) {
+			buttonPanel.drag.setPressed(false);
+			buttonPanel.wwwl.setPressed(true);
+			buttonPanel.zoom.setPressed(false);
+		}
+		else if (source.equals(buttonPanel.zoom)) {
+			buttonPanel.drag.setPressed(false);
+			buttonPanel.wwwl.setPressed(false);
+			buttonPanel.zoom.setPressed(true);
+		}
+		else if (source.equals(buttonPanel.fitToWindow)) {
+			int width = this.getWidth();
+			int height = this.getHeight();
+			int columns = dicomObject.getColumns();
+			int rows = dicomObject.getRows();
+			double widthZoom = ((double)width)/((double)columns);
+			double heightZoom = ((double)height)/((double)rows);
+			double zoom = Math.min(widthZoom, heightZoom);
+			displayFrame(currentFrame, zoom);
+		}
+		else if (source.equals(buttonPanel.saveAsJPEG)) saveAsJPEG();
+		setTheCursor();
+	}
+
+    /**
+     * The MouseWheelListener implementation; listens for mouse motion.
+     * @param event the event indicating the motion of the wheel.
+     */
+    public void mouseWheelMoved(MouseWheelEvent event) {
+		int delta = -event.getWheelRotation();
+		Object source = event.getSource();
+		if (source.equals(buttonPanel.frameLabel)) {
+			if (delta > 0) displayFrame(currentFrame+1, currentZoom);
+			if (delta < 0) displayFrame(currentFrame-1, currentZoom);
+		}
+		else if (source.equals(buttonPanel.ww)) {
+			buttonPanel.ww.increment(delta);
+			displayFrame(currentFrame, currentZoom);
+		}
+		else if (source.equals(buttonPanel.wl)) {
+			buttonPanel.wl.increment(delta);
+			displayFrame(currentFrame, currentZoom);
+		}
+	}
+
+	//Set the enables on the UI components
+	private void setEnables() {
+		buttonPanel.setEnables();
+	}
+
+	//Open an image, given the file.
+	private void displayFrame(int frame, double zoom) {
+		if (frame < 0) frame = 0;
+		if (frame >= nFrames) frame = nFrames - 1;
+		currentFrame = frame;
+		try {
+			int width = dicomObject.getColumns();
+			int desiredWidth = (int)(width * zoom);
+			if (desiredWidth > 2048) desiredWidth = 2048;
+			if (desiredWidth < 64) desiredWidth = 64;
+			double scale = (double)desiredWidth / (double)width;
+			int ww = buttonPanel.ww.getValue();
+			int wl = buttonPanel.wl.getValue();
+			BufferedImage bufferedImage = dicomObject.getScaledAndWindowLeveledBufferedImage(frame, scale, wl, ww);
+			currentZoom = (double)bufferedImage.getWidth() / (double)width;
+			imagePanel.setImage(bufferedImage);
+		}
+		catch (Exception e) {
+			logger.warn("Exception while getting the BufferedImage", e);
+			JOptionPane.showMessageDialog(this, "Exception:\n\n"+e.getMessage());
+		}
+		this.validate();
+		setEnables();
+	}
+
+	//Create a JPEG image from the currently open DICOM image.
+	private void saveAsJPEG() {
+		DialogPanel dialog = new SaveAsJPEGDialog(currentFrame+1, nFrames, dicomObject.getColumns());
+		int result = JOptionPane.showOptionDialog(
+				this,
+				dialog,
+				"Save as JPEG",
+				JOptionPane.OK_CANCEL_OPTION,
+				JOptionPane.QUESTION_MESSAGE,
+				null, //icon
+				null, //options
+				null); //initialValue
+		if (result != JOptionPane.OK_OPTION) return;
+		try {
+			int width = Integer.parseInt(dialog.getParam("width"));
+			jpegQuality = Integer.parseInt(dialog.getParam("quality"));
+			LinkedList<Integer> frames = new LinkedList<Integer>();
+			Tokenizer tokenizer = new Tokenizer(dialog.getParam("frames"));
+			int sign = 1;
+			String text = "";
+			Token token;
+			while ((token=tokenizer.getNextToken(",-")) != null) {
+				if (!token.isEmpty()) {
+					int i = sign * Integer.parseInt(token.getText());
+					frames.add(new Integer(i));
+					sign = (token.getDelimiter() == '-') ? -1 : +1;
+				}
+			}
+			if (saveAsChooser == null) {
+				saveAsChooser = new JFileChooser();
+				saveAsChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+				saveAsChooser.setCurrentDirectory(dicomObject.getFile().getParentFile());
+				saveAsChooser.setDialogTitle("Select directory for frame storage");
+			}
+			if (saveAsChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+				File dir = saveAsChooser.getSelectedFile();
+				String name = dicomObject.getFile().getName();
+				if (name.toLowerCase().endsWith(".dcm")) name = name.substring(0, name.length()-4);
+				int lastFrame = 0;
+				for (Integer frameInteger : frames) {
+					int nextFrame = frameInteger.intValue();
+					if (nextFrame > 0) {
+						saveFrame(dir, name, nextFrame, width, jpegQuality);
+						lastFrame = nextFrame;
+					}
+					else if (nextFrame < 0) {
+						nextFrame = -nextFrame;
+						for (int f=lastFrame+1; f<=nextFrame; f++) {
+							saveFrame(dir, name, f, width, jpegQuality);
+						}
+						lastFrame = nextFrame;
+					}
+				}
+				JOptionPane.showMessageDialog(this, "Success");
+			}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, "Error:\n"+e.getMessage());
+		}
+	}
+	
+	private void saveFrame(File dir, String name, int frame, int width, int jpegQuality) {
+		String filename = name + "["+frame+"].jpeg";
+		File file = new File(dir, filename);
+		int ww = buttonPanel.ww.getValue();
+		int wl = buttonPanel.wl.getValue();
+		int dobWidth = dicomObject.getColumns();
+		double scale = (double)width / (double)dobWidth;
+		dicomObject.saveAsWindowLeveledJPEG(file, frame-1, scale, wl, ww, jpegQuality);
+	}
+	
+	class SaveAsJPEGDialog extends DialogPanel {
+		public SaveAsJPEGDialog(int frame, int nFrames, int width) {
+			super();
+			addH("Save as JPEG");
+			addP("Specify the compression quality (0-100, default=-1)", "left");
+			addParam("quality", "Quality", "-1", false);
+			space(5);
+			addP("Specify the width of the saved JPEG image", "left");
+			addParam("width", "Width", Integer.toString(width), false);
+			space(5);
+			addP("Specify the frames to be saved (e.g., 1-3,4,7)", "left");
+			addParam("frames", "Frames", "1-"+nFrames, false);
+			space(5);
+		}
+	}
+
+	class ImagePanel extends JPanel {
+		BufferedImage bufferedImage;
+		public ImagePanel() {
+			super();
+			setBackground(Color.black);
+		}
+		public void setImage(BufferedImage bufferedImage) {
+			this.bufferedImage = bufferedImage;
+			int width = bufferedImage.getWidth();
+			int height = bufferedImage.getHeight();
+			setPreferredSize(new Dimension(width, height));
+			this.getParent().invalidate();
+			this.getParent().validate();
+			repaint();
+		}
+		public void clear() {
+			this.bufferedImage = null;
+			repaint();
+		}
+		public void paintComponent(Graphics g) {
+			super.paintComponent(g);
+			if (bufferedImage != null) {
+				g.drawImage(bufferedImage,0,0,null);
+			}
+		}
+	}
+
+	class ButtonPanel extends JPanel {
+		public IconButton firstFrame;
+		public IconButton prevFrame;
+		public JLabel frameLabel;
+		public IconButton nextFrame;
+		public IconButton lastFrame;
+		public IconButton zoom;
+		public IconButton drag;
+		public IconButton wwwl;
+		public NumericField ww;
+		public NumericField wl;
+		public IconButton fitToWindow;
+		public IconButton saveAsJPEG;
+		private Box box;
+		public ButtonPanel() {
+			super();
+			this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+			Color background = Configuration.getInstance().background;
+			this.setBackground(background);
+			makeComponents();
+			box = new Box(BoxLayout.X_AXIS);
+			box.setBackground(background);
+			addComponents(box);
+			this.add(Box.createVerticalStrut(3));
+			this.add(box);
+			this.add(Box.createVerticalStrut(3));
+			setEnables();
+		}
+		private void makeComponents() {
+			try {
+				frameLabel = new JLabel("");
+				firstFrame = new IconButton("/icons/go-first.png", "First Frame");
+				prevFrame = new IconButton("/icons/go-previous.png", "Prev Frame");
+				nextFrame = new IconButton("/icons/go-next.png", "Next Frame");
+				lastFrame = new IconButton("/icons/go-last.png", "Last Frame");
+				zoom = new IconButton("/cursors/zoom.png", "Zoom");
+				drag = new IconButton("/cursors/cursor_hand.png", "Pan");
+				wwwl = new IconButton("/cursors/wwwl.png", "Window Level & Width");
+				ww = new NumericField("WW", 0, 2, 65535);
+				wl = new NumericField("WL", 0, -65536, 65535);
+				fitToWindow = new IconButton("/icons/fullscreen.png", "Fit to Window");
+				saveAsJPEG = new IconButton("/icons/floppy.png", "Save as JPEG");
+				drag.setPressed(true);
+			}
+			catch (Exception e) {
+				JOptionPane.showMessageDialog(this,"Exception:\n\n"+e.getMessage());
+			}
+		}
+		private void addComponents(Box box) {
+			box.add(Box.createHorizontalStrut(5));
+			box.add(firstFrame);
+			box.add(prevFrame);
+			box.add(Box.createHorizontalStrut(10));
+			box.add(frameLabel);
+			box.add(Box.createHorizontalStrut(10));
+			box.add(nextFrame);
+			box.add(lastFrame);
+			box.add(Box.createHorizontalGlue());
+			box.add(Box.createHorizontalStrut(5));
+			box.add(zoom);
+			box.add(Box.createHorizontalStrut(5));
+			box.add(drag);
+			box.add(Box.createHorizontalStrut(5));
+			box.add(wwwl);
+			box.add(Box.createHorizontalStrut(5));
+			box.add(wl);
+			box.add(Box.createHorizontalStrut(5));
+			box.add(ww);
+			box.add(Box.createHorizontalStrut(10));
+			box.add(fitToWindow);
+			box.add(Box.createHorizontalStrut(5));
+			box.add(saveAsJPEG);
+			box.add(Box.createHorizontalStrut(5));
+		}
+		public void setEnables() {
+			boolean isImage = (dicomObject!=null) && dicomObject.isImage();
+			if (isImage) {
+				int nFrames = dicomObject.getNumberOfFrames();
+				if (nFrames == 0) nFrames = 1;
+				frameLabel.setText("Frame "+(currentFrame+1)+" of "+nFrames);
+			}
+			this.setVisible(isImage);
+		}
+		public void addActionListener(ActionListener listener) {
+			firstFrame.addActionListener(listener);
+			prevFrame.addActionListener(listener);
+			nextFrame.addActionListener(listener);
+			lastFrame.addActionListener(listener);
+			drag.addActionListener(listener);
+			wwwl.addActionListener(listener);
+			zoom.addActionListener(listener);
+			fitToWindow.addActionListener(listener);
+			saveAsJPEG.addActionListener(listener);
+		}
+		public void addMouseWheelListener(MouseWheelListener listener) {
+			frameLabel.addMouseWheelListener(listener);
+			ww.addMouseWheelListener(listener);
+			wl.addMouseWheelListener(listener);
+		}
+		class IconButton extends JButton {
+			boolean pressed = false;
+			public IconButton(String resource, String tip) throws Exception {
+				super();
+				byte[] bytes = FileUtil.getBytes(FileUtil.getStream(resource));
+				Icon icon = new ImageIcon(bytes);
+				setIcon(icon);
+				setToolTipText(tip);
+				fixBorder();
+			}
+			public boolean isPressed() {
+				return pressed;
+			}
+			public void setPressed(boolean pressed) {
+				this.pressed = pressed;
+				fixBorder();
+			}
+			private void fixBorder() {
+				if (pressed) setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
+				else setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED));
+			}				
+		}
+		class NumericField extends JPanel implements ActionListener {
+			String name;
+			JTextField text;
+			int value;
+			int min;
+			int max;
+			public NumericField(String name, int value, int min, int max) {
+				super();
+				Border inner = BorderFactory.createEmptyBorder(2, 0, 0, 0);
+				Border outer = BorderFactory.createBevelBorder(BevelBorder.LOWERED);
+				setBorder(BorderFactory.createCompoundBorder(outer, inner));
+				setBackground(Color.white);
+				text = new JTextField("-0000");
+				Dimension d = text.getPreferredSize();
+				d.width = 40;
+				text.setPreferredSize(d);
+				text.setMinimumSize(d);
+				this.name = name;
+				this.min = min;
+				this.max = max;
+				add(new JLabel(name+":"));
+				add(text);
+				d = this.getMinimumSize();
+				this.setPreferredSize(d);
+				this.setMaximumSize(d);
+				text.setHorizontalAlignment(JTextField.RIGHT);
+				text.addActionListener(this);
+				setValue(value);
+			}
+			public void setValue(int value) {
+				if (value < min) value = min;
+				if (value > max) value = max;
+				this.value = value;
+				text.setText(String.format("%d", value));
+			}
+			public void increment(int increment) {
+				try { value = Integer.parseInt(text.getText().trim()); }
+				catch (Exception ex) { }
+				value += increment;
+				setValue(this.value);
+			}
+			public int getValue() {
+				try { return Integer.parseInt(text.getText().trim()); }
+				catch (Exception ex) { }
+				return value;
+			}
+			public void actionPerformed(ActionEvent e) {
+				displayFrame(currentFrame, currentZoom);
+			}
+		}
+	}
+}

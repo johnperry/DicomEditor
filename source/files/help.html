@@ -1,0 +1,161 @@
+<html>
+	<head>
+		<title>DicomEditor Help</title>
+	</head>
+	<body>
+		<center><h1>DicomEditor Help</h1></center>
+		DicomEditor is a stand-alone DICOM viewer
+		and general anonymizer that supports supports both DICOM images
+		and XML metadata files. Each type of file is processed by a separate
+		anonymizer that is controlled by its own script file. The DICOM
+		anonymizer script can be edited directly. The XML anonymizer script
+		must be constructed separately.
+
+		<p>On a Windows machine, you can run the program by double-clicking it or by
+		launching a command window, navigating to the DicomEditor directory,
+		and typing: <code>java -jar DicomEditor.jar</code>
+		
+		<p>If the anonymizer reports errors that are not obvious from the
+		results reported in the Results pane, you may get additional information
+		by running the program in a command window.
+
+		<p><b>The Directory Tab</b>
+		
+		<p>The Directory tab has a left and right pane. The left pane provides
+		navigation through the files on the computer. The right pane displays
+		the results of actions. At the bottom of the right pane, there are buttons
+		to initiate the functions provided by the program.
+		
+		<p>The pulldown menu in the upper right of the Directory pane allows
+		selection of the file system root that will be displayed in the
+		directory tree.
+		
+		<p>The button in the lower right of the Directory pane displays a dialog
+		that allows selection of the file extensions which will be displayed
+		in the directory tree. If the list of extensions includes an asterisk,
+		all files will be displayed. There is a special notation, "[dcm]", that
+		selects files whose names contain only numerals and periods. This can
+		be used, for example, to select images on DICOM CDs.
+		
+		<p>The <b>Anonymize</b> button starts the anonymization
+		process. Which files are processed depends on whether a file or a directory is selected
+		in the Directory pane and on whether the <b>Include subdirectories</b> checkbox
+		is selected:
+		<ul>
+		<li>If a single file is selected, that file is processed.</li>
+		<li>If a directory is selected and the <b>Include subdirectories</b> checkbox is
+		not selected, all the files in the selected directory are processed, but no
+		files in subdirectories are processed.</li>
+		<li>If a directory is selected and the <b>Include subdirectories</b> checkbox is
+		selected, all the files in the selected directory and all its subdirectories
+		are processed.</li>
+		</ul>
+		
+		<p>The <b>Change names of modified files</b> checkbox determines whether the anonymization
+		process modifies the file or instead creates a new file with "-no-phi" appended to the name.
+		<ul>
+		<li>If <b>Change names of modified files</b> is selected, the anonymizer will not anonymize
+		files whose names end in "-no-phi". To anonymize those files, you must deselect the checkbox.
+		<li>If <b>Change names of modified files</b> is selected AND <b>Use SOPIUID for name</b> is selected,
+		the anonymizer will not use the "-no-phi" suffix, but will instead rename the anonymized
+		file to the SOP Instance UID of the anonymized object.
+		<li>If <b>Use SOPIUID for name</b> is checked, anonymized DICOM files will be named to
+		their SOPInstanceUID values followed by ".dcm".
+		</ul>
+		
+		<p><b>Important Note:</b> The program anonymizes in the event thread, so
+		there is no way to stop it while it is running except to kill the program. Thus, you
+		should be careful when selecting the Include Subdirectories checkbox.
+		
+		<p>Events that occur during the anonymization process are logged in the Results pane.
+		
+		<p> The <b>Fix VRs</b> button works on the same set of files as the <b>Anonymize</b> button, but instead of
+		anonymization, it only corrects certain elements in the DICOM object which have incorrect VRs. 
+		This function always overwrites the original file, and renaming is not performed.
+
+		<p> The <b>Clear Preamble</b> button works on the same set of files as the <b>Anonymize</b> button, but instead of
+		anonymization, it only overwrites the preambles of DICOM files with zeros. 
+		This function always overwrites the original file, and renaming is not performed.
+
+		<p> The <b>Set PatientIDs</b> button works on the same set of files as the <b>Anonymize</b> button, but instead of
+		anonymization, it replaces the PatientID elements with the name of the second-generation ancestor directory
+		of the file. (The second-generation ancestor of A/B/C/D/image.dcm is B, so if A is selected, all descendants of the B directory
+		will have their PatientID elements set to "B".) 
+		This function requires that a directory, not an individual file, be selected in the Directory pane.
+		It always walks the directory tree under the selected directory, independent of the setting of the Include Subdirectories
+		checkbox. It ignores individual files in the selected directory and only processes its child directories and their descendents.
+		This function always overwrites the original file, and renaming is not performed.
+
+		<p><b>The Viewer Tab</b>
+
+		<p>The Viewer tab displays the currently selected DICOM image. It provides zoom through the mouse wheel when the 
+		cursor is over the image. If the image contains multiple frames the Next Frame and Previous Frame buttons sequence through 
+		the frames. Frame sequencing is also provided through the mouse wheel when the cursor is over the frame number in the header.
+		The Save As JPEG button saves the image, reduced to the width specified in a popup dialog.
+		
+		<p><b>The Editor Tab</b>
+		
+		<p>The Editor tab displays the element contents of the selected DICOM image.
+		
+		<!--
+		Certain elements in the
+		metadata (most of the ones that are textual) are editable.
+		<p>To edit an element, click on its (group,element) designation. A dialog box will appear
+		allowing you to change the value of the element.
+		<p>If you have changed an element, the Save and Save All buttons will be enabled. Save only saves the
+		changes made to the current image. Save All applies the changes to all the
+		images with the same StudyInstanceUID in the current directory.
+		<p>An element designation displayed in red is one that could cause the anonymizer to call its quarantine
+		function and leave the image untouched. If you anonymize an image and the Results pane shows that
+		the anonymizer called the
+		quarantine function, look at the values in the red elements and see if there is something wrong.
+		<p>To save a JPEG version of the currently displayed image, click the Save As JPEG button. A dialog
+		box will appear allowing you to specify the maximum width of the saved image. The actual width of the
+		saved image will be the minimum of the width of the DICOM image and the maximum width you specify.
+		The height will be scaled to maintain the aspect ratio.
+		-->
+
+		<p><b>The Anonymizer Tab</b>
+		
+		<p>The DICOM Anonymizer is driven by a script file called "dicom-anonymizer.script" located in the same directory
+		where the DicomEditor program is stored. A default version is included in the installation.
+		<p>
+		The Anonymizer Tab displays the DICOM anonymizer scripts. You can edit the scripts and click the Save button.
+		Changes are not effective until the scripts are saved. If you make a change and decide you made an error
+		before saving, click the Reset button and the scripts will be refreshed from the last saved version.
+		
+		<p>The DICOM anonymizer script functions are documented in http://mircwiki.rsna.org/index.php?title=The_CTP_DICOM_Anonymizer.
+
+		<p>The XML anonymizer is driven by a script file called "xml-anonymizer.script" located in
+		the same directory where the DicomEditor program is stored. This file is not delivered
+		as part of the installation, so you must construct it yourself using any text editor
+		(e.g., TextPad). Because XML is very general, the script language is different from
+		that of the DICOM anonymizer. It is also different in order to make it look XPath-like
+		for the benefit of XSL wizards.
+
+		<p>The XML anonymizer script functions are documented in http://mircwiki.rsna.org/index.php?title=The_CTP_XML_Anonymizer.
+
+		<!--
+		<h2>The Encryption Key</h2>
+		The re-identification system which is part of the anonymizer encrypts
+		the keys in its database to make it more difficult for a hacker to acquire
+		protected health information. The encryption key is a string of text that
+		can be thought of as a password. You have the option to define your own key
+		or to use a default key that is stored in the program. A good key is about
+		20 characters long, not counting any spaces.
+		<p>
+		When the program starts, if it finds an existing re-identification database
+		it checks to see whether the key to the database is the default. If it is not,
+		it prompts the user for the key.
+		<p>
+		If your system is on a secure network, then using the default key may be
+		more convenient, since the prompt is suppressed. If your system is in a
+		less secure place, you should define your own key the first time the program
+		is run. Once the key for a database is defined, it cannot be changed. To
+		start a new re-identification database, you must remove the idtable.properties
+		file from the DicomEditor directory and restart the program, causing it to
+		create a new database and request a key the next time it runs.
+		-->
+
+	</body>
+</html>
