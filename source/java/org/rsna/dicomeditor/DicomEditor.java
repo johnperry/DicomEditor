@@ -28,7 +28,7 @@ import org.rsna.util.StringUtil;
  */
 public class DicomEditor extends JFrame {
 
-    private String					windowTitle = "DicomEditor - version 32";
+    private String					windowTitle = "DicomEditor - version 33";
     private MainPanel				mainPanel;
     private JPanel					splitPanel;
     private SourcePanel				sourcePanel;
@@ -86,6 +86,7 @@ public class DicomEditor extends JFrame {
 		pack();
 		positionFrame();
 		setVisible(true);
+		checkImageIOTools();
     }
 
 	class MainPanel extends JPanel {
@@ -107,6 +108,7 @@ public class DicomEditor extends JFrame {
 			tabbedPane.addTab("Anonymizer",script);
 			tabbedPane.addTab("Help",help);
 			tabbedPane.setSelectedIndex(0);
+			tabbedPane.addChangeListener(viewer);
 		}
 	}
 
@@ -164,6 +166,21 @@ public class DicomEditor extends JFrame {
 			}
 		}
 		return false;
+	}
+	
+	private void checkImageIOTools() {
+		String javaHome = System.getProperty("java.home");
+		File extDir = new File(javaHome);
+		extDir = new File(extDir, "lib");
+		extDir = new File(extDir, "ext");
+		File clib = FileUtil.getFile(extDir, "clibwrapper_jiio", ".jar");
+		File jai = FileUtil.getFile(extDir, "jai_imageio", ".jar");
+		boolean imageIOTools = (clib != null) && (jai != null);
+		if (!imageIOTools) {
+			JOptionPane.showMessageDialog(this, 
+				"The ImageIOTools are not"+
+				"installed on this machine.");			
+		}			
 	}
 
 }

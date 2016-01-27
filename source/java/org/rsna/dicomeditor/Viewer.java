@@ -16,6 +16,7 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
+import javax.swing.text.*;
 import org.apache.log4j.*;
 import org.rsna.ctp.objects.DicomObject;
 import org.rsna.ui.*;
@@ -24,7 +25,7 @@ import org.rsna.util.*;
 /**
  * A JPanel that provides a DICOM viewer.
  */
-public class Viewer extends JPanel implements ActionListener, FileListener, MouseWheelListener {
+public class Viewer extends JPanel implements ActionListener, FileListener, MouseWheelListener, KeyEventDispatcher, ChangeListener {
 
 	static final Logger logger = Logger.getLogger(Viewer.class);
 
@@ -38,6 +39,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
     double currentZoom = 1.0;
     JScrollPane jsp;
     boolean isDragging = false;
+    boolean monitoringKeys = false;
 
 	/**
 	 * Class constructor; creates a Viewer JPanel.
@@ -60,6 +62,36 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		imagePanel.addMouseMotionListener(dragger);
 		imagePanel.addMouseWheelListener(dragger);
     }
+    
+	//ChaangeListener implementation
+    public void stateChanged(ChangeEvent e) {
+		if (this.isVisible() && !monitoringKeys) {
+			KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+			manager.addKeyEventDispatcher(this);
+			monitoringKeys = true;
+		}
+		else if (!this.isVisible() && monitoringKeys) {
+			KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+			manager.removeKeyEventDispatcher(this);
+			monitoringKeys = false;
+		}
+	}
+    
+	//KeyEventDispatcher implementation
+	public boolean dispatchKeyEvent(KeyEvent e) {
+		Object source = e.getSource();
+		if (source instanceof JTextComponent) return false;
+		if (e.getID() == KeyEvent.KEY_PRESSED) {
+			int k = e.getKeyCode();
+			if ((k == KeyEvent.VK_RIGHT) || (k == KeyEvent.VK_DOWN)) {
+				displayFrame(currentFrame+1, currentZoom);
+			}
+			else if ((k == KeyEvent.VK_LEFT) || (k == KeyEvent.VK_UP)) {
+				displayFrame(currentFrame-1, currentZoom);
+			}
+		}
+		return false;
+	}
 
     class Dragger extends MouseInputAdapter {
 		int originalX = 0;
@@ -128,8 +160,8 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 					if (delta < 0) displayFrame(currentFrame, currentZoom - 0.1);					
 				}
 				else {
-					if (delta > 0) displayFrame(currentFrame+1, currentZoom);
-					if (delta < 0) displayFrame(currentFrame-1, currentZoom);
+					if (delta > 0) displayFrame(currentFrame-1, currentZoom);
+					if (delta < 0) displayFrame(currentFrame+1, currentZoom);
 				}
 			}
 		}
@@ -223,8 +255,9 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			buttonPanel.zoom.setPressed(true);
 		}
 		else if (source.equals(buttonPanel.fitToWindow)) {
-			int width = this.getWidth();
-			int height = this.getHeight();
+			Dimension d = jsp.getViewport().getExtentSize();
+			int width = d.width;
+			int height = d.height;
 			int columns = dicomObject.getColumns();
 			int rows = dicomObject.getRows();
 			double widthZoom = ((double)width)/((double)columns);
@@ -244,8 +277,8 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		int delta = -event.getWheelRotation();
 		Object source = event.getSource();
 		if (source.equals(buttonPanel.frameLabel)) {
-			if (delta > 0) displayFrame(currentFrame+1, currentZoom);
-			if (delta < 0) displayFrame(currentFrame-1, currentZoom);
+			if (delta > 0) displayFrame(currentFrame-1, currentZoom);
+			if (delta < 0) displayFrame(currentFrame+1, currentZoom);
 		}
 		else if (source.equals(buttonPanel.ww)) {
 			buttonPanel.ww.increment(delta);
@@ -567,7 +600,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			}
 			public int getValue() {
 				try { return Integer.parseInt(text.getText().trim()); }
-				catch (Exception ex) { }
+				catch (Exception ex) { setValue(value); }
 				return value;
 			}
 			public void actionPerformed(ActionEvent e) {

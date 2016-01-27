@@ -5,19 +5,21 @@
 	<body>
 		<center><h1>DicomEditor Help</h1></center>
 		DicomEditor is a stand-alone DICOM viewer
-		and general anonymizer that supports supports both DICOM images
-		and XML metadata files. Each type of file is processed by a separate
-		anonymizer that is controlled by its own script file. The DICOM
-		anonymizer script can be edited directly. The XML anonymizer script
-		must be constructed separately.
+		and general anonymizer that supports supports DICOM images.
+		The DICOM anonymizer script can be edited directly in the program.
 
 		<p>On a Windows machine, you can run the program by double-clicking it or by
 		launching a command window, navigating to the DicomEditor directory,
-		and typing: <code>java -jar DicomEditor.jar</code>
+		and typing: 
+		<br><br>&nbsp;&nbsp;&nbsp;&nbsp;<code>java -jar DicomEditor.jar</code>
 		
 		<p>If the anonymizer reports errors that are not obvious from the
-		results reported in the Results pane, you may get additional information
+		text shown in the Results pane, you may get additional information
 		by running the program in a command window.
+
+		<p>If an out-of-memory error occurs, you may assign more memory to
+		the program by running it in a command window with the command:
+		<br><br>&nbsp;&nbsp;&nbsp;&nbsp;<code>java -Xmx768m -jar DicomEditor.jar</code>
 
 		<p><b>The Directory Tab</b>
 		
@@ -30,10 +32,14 @@
 		selection of the file system root that will be displayed in the
 		directory tree.
 		
+		<p>The directory tree does not track changes in the directory structure
+		that occur behind the program's back. You can refresh the directory tree
+		by clicking the root of the tree.
+
 		<p>The button in the lower right of the Directory pane displays a dialog
-		that allows selection of the file extensions which will be displayed
+		that allows selection of the file extensions that are displayed
 		in the directory tree. If the list of extensions includes an asterisk,
-		all files will be displayed. There is a special notation, "[dcm]", that
+		all files are displayed. There is a special notation, "[dcm]", that
 		selects files whose names contain only numerals and periods. This can
 		be used, for example, to select images on DICOM CDs.
 		
@@ -77,21 +83,21 @@
 		anonymization, it only overwrites the preambles of DICOM files with zeros. 
 		This function always overwrites the original file, and renaming is not performed.
 
-		<p> The <b>Set PatientIDs</b> button works on the same set of files as the <b>Anonymize</b> button, but instead of
-		anonymization, it replaces the PatientID elements with the name of the second-generation ancestor directory
-		of the file. (The second-generation ancestor of A/B/C/D/image.dcm is B, so if A is selected, all descendants of the B directory
-		will have their PatientID elements set to "B".) 
-		This function requires that a directory, not an individual file, be selected in the Directory pane.
-		It always walks the directory tree under the selected directory, independent of the setting of the Include Subdirectories
-		checkbox. It ignores individual files in the selected directory and only processes its child directories and their descendents.
-		This function always overwrites the original file, and renaming is not performed.
-
 		<p><b>The Viewer Tab</b>
 
-		<p>The Viewer tab displays the currently selected DICOM image. It provides zoom through the mouse wheel when the 
-		cursor is over the image. If the image contains multiple frames the Next Frame and Previous Frame buttons sequence through 
-		the frames. Frame sequencing is also provided through the mouse wheel when the cursor is over the frame number in the header.
-		The Save As JPEG button saves the image, reduced to the width specified in a popup dialog.
+		<p>The Viewer tab displays the currently selected DICOM image. If the image contains multiple frames,
+		the Next Frame and Previous Frame buttons sequence through 
+		the frames. Frame sequencing is also provided through the mouse wheel. 
+		
+		<p>
+		Zoom, pan, and window width and level 
+		functions are provided through icons in the upper right of the window. 
+		
+		<p>The window width and level can also
+		be set manually by typing values into the provided text boxes. When entering text in the window width and level 
+		boxes, the values do not take effect until the Enter key is pressed.
+		
+		<p>The Save As JPEG button saves the image, reduced to the width specified in a popup dialog.
 		
 		<p><b>The Editor Tab</b>
 		
@@ -126,6 +132,7 @@
 		
 		<p>The DICOM anonymizer script functions are documented in http://mircwiki.rsna.org/index.php?title=The_CTP_DICOM_Anonymizer.
 
+		<!--
 		<p>The XML anonymizer is driven by a script file called "xml-anonymizer.script" located in
 		the same directory where the DicomEditor program is stored. This file is not delivered
 		as part of the installation, so you must construct it yourself using any text editor
@@ -134,6 +141,7 @@
 		for the benefit of XSL wizards.
 
 		<p>The XML anonymizer script functions are documented in http://mircwiki.rsna.org/index.php?title=The_CTP_XML_Anonymizer.
+		-->
 
 		<!--
 		<h2>The Encryption Key</h2>
