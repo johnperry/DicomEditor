@@ -416,10 +416,11 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		public IconButton fitToWindow;
 		public IconButton saveAsJPEG;
 		private Box box;
+		Color background = Color.white;
 		public ButtonPanel() {
 			super();
 			this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-			Color background = Configuration.getInstance().background;
+			background = Configuration.getInstance().background;
 			this.setBackground(background);
 			makeComponents();
 			box = new Box(BoxLayout.X_AXIS);
@@ -534,7 +535,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 				Border inner = BorderFactory.createEmptyBorder(2, 0, 0, 0);
 				Border outer = BorderFactory.createBevelBorder(BevelBorder.LOWERED);
 				setBorder(BorderFactory.createCompoundBorder(outer, inner));
-				setBackground(Color.white);
+				setBackground(background);
 				text = new JTextField("-0000");
 				Dimension d = text.getPreferredSize();
 				d.width = 40;
