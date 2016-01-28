@@ -21,6 +21,10 @@ import org.apache.log4j.*;
 import org.rsna.ctp.objects.DicomObject;
 import org.rsna.ui.*;
 import org.rsna.util.*;
+import org.dcm4che.data.DcmElement;
+import org.dcm4che.data.Dataset;
+import org.dcm4che.dict.Tags;
+import org.dcm4che.dict.VRs;
 
 /**
  * A JPanel that provides a DICOM viewer.
@@ -180,10 +184,11 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 					if (dicomObject.isImage()) {
 						nFrames = Math.max(dicomObject.getNumberOfFrames(), 1);
 						setWWWL(dicomObject);
+						currentFrame = 0;
 						currentZoom = 1.0;
 						jsp.getHorizontalScrollBar().setValue(0);
 						jsp.getVerticalScrollBar().setValue(0);
-						displayFrame(0, 1.0);
+						fitToWindow();
 						setEnables();
 						setTheCursor();
 						return;
@@ -199,15 +204,53 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 	}
 	
 	private void setWWWL(DicomObject dob) {
-		int ww = dob.getWindowWidth();
-		int wl = dob.getWindowCenter();
-		if ((ww == 0) && (wl == 0)) {
+		int ww, wl;
+		Point p = getWWWL(dob.getDataset());
+		if (p != null) {
+			wl = p.x;
+			ww = p.y;
+		}
+		else {
 			int bs = dob.getBitsStored();
-			wl = 1 << (bs-1);
-			ww = wl / 2;
+			wl = 1000; //1 << (bs-1);
+			ww = 1000; //wl / 2;
 		}
 		buttonPanel.ww.setValue(ww);
 		buttonPanel.wl.setValue(wl);
+	}
+	
+	private Point getWWWL(Dataset ds) {
+		if (ds.contains(Tags.WindowCenter) && ds.contains(Tags.WindowWidth)) {
+			try {
+				DcmElement deWL = ds.get(Tags.WindowCenter);
+				DcmElement deWW = ds.get(Tags.WindowWidth);
+				String[] wlStrings = deWL.getStrings(ds.getSpecificCharacterSet());
+				String[] wwStrings = deWW.getStrings(ds.getSpecificCharacterSet());
+				int len = Math.min( wlStrings.length, wwStrings.length );
+				if (len > 0) {
+					return new Point(
+								StringUtil.getInt(wlStrings[0]),
+								StringUtil.getInt(wwStrings[0]) );
+				}
+			}
+			catch (Exception ex) { ex.printStackTrace(); }
+			return null;
+		}
+		else {
+			for (Iterator it=ds.iterator(); it.hasNext(); ) {
+				DcmElement de = (DcmElement)it.next();
+				if (VRs.toString(de.vr()).equals("SQ")) {
+					Dataset itemDS;
+					int item = 0;
+					while ((itemDS = de.getItem(item)) != null) {
+						Point p = getWWWL(itemDS);
+						if (p != null) return p;
+						item++;
+					}
+				}
+			}
+			return null;
+		}
 	}
 	
 	private void setTheCursor() {
@@ -255,19 +298,23 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			buttonPanel.zoom.setPressed(true);
 		}
 		else if (source.equals(buttonPanel.fitToWindow)) {
-			Dimension d = jsp.getViewport().getExtentSize();
-			int width = d.width;
-			int height = d.height;
-			int columns = dicomObject.getColumns();
-			int rows = dicomObject.getRows();
-			double widthZoom = ((double)width)/((double)columns);
-			double heightZoom = ((double)height)/((double)rows);
-			double zoom = Math.min(widthZoom, heightZoom);
-			displayFrame(currentFrame, zoom);
+			fitToWindow();
 		}
 		else if (source.equals(buttonPanel.saveAsJPEG)) saveAsJPEG();
 		setTheCursor();
 	}
+	
+	private void fitToWindow() {
+		Dimension d = jsp.getViewport().getExtentSize();
+		int width = d.width;
+		int height = d.height;
+		int columns = dicomObject.getColumns();
+		int rows = dicomObject.getRows();
+		double widthZoom = ((double)width)/((double)columns);
+		double heightZoom = ((double)height)/((double)rows);
+		double zoom = Math.min(widthZoom, heightZoom);
+		displayFrame(currentFrame, zoom);
+	}		
 
     /**
      * The MouseWheelListener implementation; listens for mouse motion.
