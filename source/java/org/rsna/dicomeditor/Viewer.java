@@ -55,6 +55,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		imagePanel = new ImagePanel();
 		jsp = new JScrollPane();
 		jsp.getVerticalScrollBar().setUnitIncrement(25);
+		jsp.getHorizontalScrollBar().setMinimum(25);
 		jsp.setViewportView(imagePanel);
 		this.add(buttonPanel, BorderLayout.NORTH);
 		this.add(jsp, BorderLayout.CENTER);
@@ -156,12 +157,12 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 				boolean altKeyDown = (e.getModifiersEx() & e.ALT_DOWN_MASK) == e.ALT_DOWN_MASK;
 				int delta = -e.getWheelRotation();
 				if (buttonPanel.zoom.isPressed() && !altKeyDown) {
-					if (delta > 0) displayFrame(currentFrame, currentZoom + 0.1);
-					if (delta < 0) displayFrame(currentFrame, currentZoom - 0.1);
+					if (delta > 0) displayFrame(currentFrame, currentZoom + 0.05);
+					if (delta < 0) displayFrame(currentFrame, currentZoom - 0.05);
 				}
 				else if (buttonPanel.drag.isPressed() && altKeyDown) {
-					if (delta > 0) displayFrame(currentFrame, currentZoom + 0.1);
-					if (delta < 0) displayFrame(currentFrame, currentZoom - 0.1);					
+					if (delta > 0) displayFrame(currentFrame, currentZoom + 0.05);
+					if (delta < 0) displayFrame(currentFrame, currentZoom - 0.05);					
 				}
 				else {
 					if (delta > 0) displayFrame(currentFrame-1, currentZoom);
@@ -189,7 +190,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 						jsp.getHorizontalScrollBar().setValue(0);
 						jsp.getVerticalScrollBar().setValue(0);
 						fitToWindow();
-						setEnables();
+						buttonPanel.setFrameNumber();
 						setTheCursor();
 						return;
 					}
@@ -198,7 +199,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			catch (Exception unable) {
 				dicomObject = null;
 				imagePanel.clear();
-				setEnables();
+				buttonPanel.setFrameNumber();
 			}
 		}
 	}
@@ -337,11 +338,6 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		}
 	}
 
-	//Set the enables on the UI components
-	private void setEnables() {
-		buttonPanel.setEnables();
-	}
-
 	//Open an image, given the file.
 	private void displayFrame(int frame, double zoom) {
 		if (frame < 0) frame = 0;
@@ -356,15 +352,17 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			int ww = buttonPanel.ww.getValue();
 			int wl = buttonPanel.wl.getValue();
 			BufferedImage bufferedImage = dicomObject.getScaledAndWindowLeveledBufferedImage(frame, scale, wl, ww);
+			imagePanel.saveScrollState();
 			currentZoom = (double)bufferedImage.getWidth() / (double)width;
 			imagePanel.setImage(bufferedImage);
+			imagePanel.resetScrollState();
 		}
 		catch (Exception e) {
 			logger.warn("Exception while getting the BufferedImage", e);
 			JOptionPane.showMessageDialog(this, "Exception:\n\n"+e.getMessage());
 		}
 		this.validate();
-		setEnables();
+		buttonPanel.setFrameNumber();
 	}
 
 	//Create a JPEG image from the currently open DICOM image.
@@ -398,9 +396,15 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			if (saveAsChooser == null) {
 				saveAsChooser = new JFileChooser();
 				saveAsChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-				saveAsChooser.setCurrentDirectory(dicomObject.getFile().getParentFile());
-				saveAsChooser.setDialogTitle("Select directory for frame storage");
+				Dimension d = saveAsChooser.getPreferredSize();
+				d.width = 800;
+				saveAsChooser.setPreferredSize(d);
 			}
+			File dobFile = dicomObject.getFile().getAbsoluteFile();
+			File dobDir = dobFile.getParentFile();
+			saveAsChooser.setCurrentDirectory(dobDir.getParentFile());
+			saveAsChooser.setSelectedFile(dobDir);
+			saveAsChooser.setDialogTitle("Select directory for frame storage");
 			if (saveAsChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
 				File dir = saveAsChooser.getSelectedFile();
 				String name = dicomObject.getFile().getName();
@@ -457,6 +461,9 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 
 	class ImagePanel extends JPanel {
 		BufferedImage bufferedImage;
+		double savedZoom = 0.0;
+		Point savedMousePosition = null;
+		Point savedScrollBarValues = null;
 		public ImagePanel() {
 			super();
 			setBackground(Color.black);
@@ -478,6 +485,29 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			super.paintComponent(g);
 			if (bufferedImage != null) {
 				g.drawImage(bufferedImage,0,0,null);
+			}
+		}
+		public void saveScrollState() {
+			savedMousePosition = getMousePosition();
+			if (savedMousePosition != null) {
+				savedZoom = currentZoom;
+				JScrollBar hsb = jsp.getHorizontalScrollBar();
+				JScrollBar vsb = jsp.getVerticalScrollBar();
+				savedScrollBarValues = new Point(hsb.getValue(), vsb.getValue());
+			}
+		}
+		public void resetScrollState() {
+			if (savedMousePosition != null) {
+				JScrollBar hsb = jsp.getHorizontalScrollBar();
+				JScrollBar vsb = jsp.getVerticalScrollBar();
+				int origVisibleX = savedMousePosition.x - savedScrollBarValues.x;
+				int origVisibleY = savedMousePosition.y - savedScrollBarValues.y;
+				double scale = currentZoom / savedZoom;
+				double newZoomedX = scale * savedMousePosition.x;
+				double newZoomedY = scale * savedMousePosition.y;
+				hsb.setValue((int)(newZoomedX - origVisibleX));
+				vsb.setValue((int)(newZoomedY - origVisibleY));
+				savedMousePosition = null;
 			}
 		}
 	}
@@ -509,7 +539,6 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			this.add(Box.createVerticalStrut(3));
 			this.add(box);
 			this.add(Box.createVerticalStrut(3));
-			setEnables();
 		}
 		private void makeComponents() {
 			try {
@@ -525,7 +554,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 				wl = new NumericField("WL", 0, -65536, 65535);
 				fitToWindow = new IconButton("/icons/fullscreen.png", "Fit to Window");
 				saveAsJPEG = new IconButton("/icons/floppy.png", "Save as JPEG");
-				drag.setPressed(true);
+				wwwl.setPressed(true);
 			}
 			catch (Exception e) {
 				JOptionPane.showMessageDialog(this,"Exception:\n\n"+e.getMessage());
@@ -557,7 +586,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			box.add(saveAsJPEG);
 			box.add(Box.createHorizontalStrut(5));
 		}
-		public void setEnables() {
+		public void setFrameNumber() {
 			boolean isImage = (dicomObject!=null) && dicomObject.isImage();
 			if (isImage) {
 				int nFrames = dicomObject.getNumberOfFrames();

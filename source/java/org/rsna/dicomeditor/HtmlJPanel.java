@@ -52,19 +52,6 @@ public class HtmlJPanel extends JPanel {
 	public HtmlJPanel(String text) {
 		super();
 		editor = new ScrollableJEditorPane("text/html",text);
-/*
-		try {
-			URL url = this.getClass().getResource("/");
-			if (url == null) System.out.println("HtmlJPanel: url is null");
-			else {
-				System.out.println("HtmlJPanel: "+url.toString());
-				String path = url.getPath().substring(0,url.getPath().lastIndexOf("/")+1);
-				URL base = new URL(url.getProtocol(), url.getHost(), url.getPort(), path);
-				((HTMLDocument)editor.getDocument()).setBase(base);
-			}
-		}
-		catch (Exception unable) { unable.printStackTrace(); }
-*/
 		editor.setEditable(false);
 		this.setLayout(new BorderLayout());
 		scrollPane = new JScrollPane();

@@ -17,6 +17,7 @@ import javax.swing.event.*;
 import org.apache.log4j.*;
 import org.rsna.ui.ApplicationProperties;
 import org.rsna.ui.SourcePanel;
+import org.rsna.util.BrowserUtil;
 import org.rsna.util.FileUtil;
 import org.rsna.util.StringUtil;
 
@@ -28,7 +29,7 @@ import org.rsna.util.StringUtil;
  */
 public class DicomEditor extends JFrame {
 
-    private String					windowTitle = "DicomEditor - version 33";
+    private String					windowTitle = "DicomEditor - version 34";
     private MainPanel				mainPanel;
     private JPanel					splitPanel;
     private SourcePanel				sourcePanel;
@@ -178,8 +179,11 @@ public class DicomEditor extends JFrame {
 		boolean imageIOTools = (clib != null) && (jai != null);
 		if (!imageIOTools) {
 			JOptionPane.showMessageDialog(this, 
-				"The ImageIOTools are not"+
-				"installed on this machine.");			
+				"The ImageIOTools are not installed on this machine.\n" +
+				"When you close this dialog, your browser will launch\n" +
+				"and take you to a site where you can obtain them.");
+			BrowserUtil.openURL(
+				"http://mircwiki.rsna.org/index.php?title=Java_Advanced_Imaging_ImageIO_Tools");
 		}			
 	}
 

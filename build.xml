@@ -33,7 +33,6 @@
 			<format property="now" pattern="HH:mm:ss z"/>
 		</tstamp>
 		<echo message="Time now ${now}"/>
-		<echo message="Building version ${version}"/>
 		<echo message="ant.java.version = ${ant.java.version}" />
 		<mkdir dir="${build}"/>
 		<mkdir dir="${products}"/>
