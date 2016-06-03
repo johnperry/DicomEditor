@@ -65,6 +65,7 @@ public class Editor extends JPanel implements FileListener {
 				}
 			}
 			catch (Exception unable) {
+				logger.warn("Unable to parse "+event.getFile()+" as DicomObject.",unable);
 				dicomObject = null;
 				textPanel.clear();
 			}
