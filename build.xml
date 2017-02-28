@@ -16,7 +16,7 @@
 
 	<property name="ctp" value="/Development/CTP"/>
 
-	<property name="title" value="FileSender"/>
+	<property name="title" value="FileEditor"/>
 	<property name="copyright" value="Copyright 2012 Radiological Society of North America"/>
 
 	<path id="classpath">
