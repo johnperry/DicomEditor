@@ -44,6 +44,9 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
     JScrollPane jsp;
     boolean isDragging = false;
     boolean monitoringKeys = false;
+    int currentX = 0;
+    int currentY = 0;
+    FooterPanel footerPanel;
 
 	/**
 	 * Class constructor; creates a Viewer JPanel.
@@ -53,12 +56,14 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		this.setLayout(new BorderLayout());
 		buttonPanel = new ButtonPanel();
 		imagePanel = new ImagePanel();
+		footerPanel = new FooterPanel();
 		jsp = new JScrollPane();
 		jsp.getVerticalScrollBar().setUnitIncrement(25);
 		jsp.getHorizontalScrollBar().setMinimum(25);
 		jsp.setViewportView(imagePanel);
 		this.add(buttonPanel, BorderLayout.NORTH);
 		this.add(jsp, BorderLayout.CENTER);
+		this.add(footerPanel, BorderLayout.SOUTH);
 		this.setBackground(Configuration.getInstance().background);
 		buttonPanel.addActionListener(this);
 		buttonPanel.addMouseWheelListener(this);
@@ -152,6 +157,11 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 				}
 			}
 		}
+		public void mouseMoved(MouseEvent e) {
+			currentX = (int) (e.getX()/currentZoom);
+			currentY = (int) (e.getY()/currentZoom);
+			footerPanel.setParams();
+		}
 		public void mouseWheelMoved(MouseWheelEvent e) {
 			if (dicomObject != null) {
 				boolean altKeyDown = (e.getModifiersEx() & e.ALT_DOWN_MASK) == e.ALT_DOWN_MASK;
@@ -191,6 +201,8 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 						jsp.getVerticalScrollBar().setValue(0);
 						fitToWindow();
 						buttonPanel.setFrameNumber();
+						footerPanel.setFile(file);
+						buttonPanel.clearButtons();
 						setTheCursor();
 						return;
 					}
@@ -269,14 +281,17 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		else if (buttonPanel.zoom.isPressed()) {
 			imagePanel.setCursor(CustomCursors.getInstance().getCursor("zoom", 16, 16));
 		}
+		else {
+			imagePanel.setCursor(Cursor.getDefaultCursor());
+		}
 	}
 	
     /**
      * The ActionListener implementation; listens for buttons on the ButtonPanel.
-     * @param event the event indicating which button was clicked.
+     * @param e the event indicating which button was clicked.
      */
-    public void actionPerformed(ActionEvent event) {
-		Object source = event.getSource();
+    public void actionPerformed(ActionEvent e) {
+		Object source = e.getSource();
 		if (source.equals(buttonPanel.firstFrame)) displayFrame(0, currentZoom);
 		else if (source.equals(buttonPanel.prevFrame)) displayFrame(currentFrame-1, currentZoom);
 		else if (source.equals(buttonPanel.nextFrame)) displayFrame(currentFrame+1, currentZoom);
@@ -284,22 +299,24 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			displayFrame(nFrames-1, currentZoom);
 		}
 		else if (source.equals(buttonPanel.drag)) {
-			buttonPanel.drag.setPressed(true);
+			buttonPanel.drag.toggle();
 			buttonPanel.wwwl.setPressed(false);
 			buttonPanel.zoom.setPressed(false);
 		}
 		else if (source.equals(buttonPanel.wwwl)) {
 			buttonPanel.drag.setPressed(false);
-			buttonPanel.wwwl.setPressed(true);
+			buttonPanel.wwwl.toggle();
 			buttonPanel.zoom.setPressed(false);
 		}
 		else if (source.equals(buttonPanel.zoom)) {
 			buttonPanel.drag.setPressed(false);
 			buttonPanel.wwwl.setPressed(false);
-			buttonPanel.zoom.setPressed(true);
+			buttonPanel.zoom.toggle();
 		}
 		else if (source.equals(buttonPanel.fitToWindow)) {
-			fitToWindow();
+			boolean altKeyDown = (e.getModifiers() & e.ALT_MASK) == e.ALT_MASK;
+			if (!altKeyDown) fitToWindow();
+			else displayFrame(currentFrame, 1.0);
 		}
 		else if (source.equals(buttonPanel.saveAsJPEG)) saveAsJPEG();
 		setTheCursor();
@@ -356,6 +373,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			currentZoom = (double)bufferedImage.getWidth() / (double)width;
 			imagePanel.setImage(bufferedImage);
 			imagePanel.resetScrollState();
+			footerPanel.setParams();
 		}
 		catch (Exception e) {
 			logger.warn("Exception while getting the BufferedImage", e);
@@ -595,6 +613,11 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			}
 			this.setVisible(isImage);
 		}
+		public void clearButtons() {
+			zoom.setPressed(false);
+			drag.setPressed(false);
+			wwwl.setPressed(false);
+		}
 		public void addActionListener(ActionListener listener) {
 			firstFrame.addActionListener(listener);
 			prevFrame.addActionListener(listener);
@@ -626,6 +649,10 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			}
 			public void setPressed(boolean pressed) {
 				this.pressed = pressed;
+				fixBorder();
+			}
+			public void toggle() {
+				this.pressed = !pressed;
 				fixBorder();
 			}
 			private void fixBorder() {
@@ -684,4 +711,31 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 			}
 		}
 	}
+	
+	class FooterPanel extends JPanel {
+		JLabel filename;
+		JLabel params;
+		public FooterPanel() {
+			super();
+			this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+			this.setBackground(Configuration.getInstance().background);
+			filename = new JLabel(" ");
+			params = new JLabel(" ");
+			this.add(filename);
+			this.add(Box.createHorizontalGlue());
+			this.add(params);
+		}
+		public void setFilename(String name) {
+			if (name.equals("")) name = " ";
+			filename.setText(name);
+		}
+		public void setFile(File file) {
+			setFilename(file.getName());
+		}
+		public void setParams() {
+			String s = String.format("(%d,%d)  z=%.2f", currentX, currentY, currentZoom);
+			params.setText(s);
+		}
+	}
+
 }

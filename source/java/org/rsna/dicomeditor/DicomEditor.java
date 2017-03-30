@@ -29,7 +29,7 @@ import org.rsna.util.StringUtil;
  */
 public class DicomEditor extends JFrame {
 
-    private String					windowTitle = "DicomEditor - version 34";
+    private String					windowTitle = "DicomEditor - version 35";
     private MainPanel				mainPanel;
     private JPanel					splitPanel;
     private SourcePanel				sourcePanel;

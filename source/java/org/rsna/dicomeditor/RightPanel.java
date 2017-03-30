@@ -143,7 +143,12 @@ public class RightPanel extends JPanel
 			String result = "";
 			if (file.getName().toLowerCase().endsWith(".xml")) {
 				File xmlScript = new File(xmlScriptFile);
-				result = XMLAnonymizer.anonymize(file, copy, xmlScript).isOK() ? "" : "failed";
+				LookupTable lookupTable = LookupTable.getInstance( new File(lookupTableFile) );
+				result = 
+					XMLAnonymizer.anonymize(
+						file, copy, 
+						xmlScript, 
+						lookupTable.getProperties()).isOK() ? "" : "failed";
 			}
 			else {
 				DAScript dicomScript = DAScript.getInstance( new File(dicomScriptFile) );
