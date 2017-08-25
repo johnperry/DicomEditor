@@ -73,7 +73,7 @@ public class Viewer extends JPanel implements ActionListener, FileListener, Mous
 		imagePanel.addMouseWheelListener(dragger);
     }
     
-	//ChaangeListener implementation
+	//ChangeListener implementation
     public void stateChanged(ChangeEvent e) {
 		if (this.isVisible() && !monitoringKeys) {
 			KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
