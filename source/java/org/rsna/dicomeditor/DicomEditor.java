@@ -29,7 +29,7 @@ import org.rsna.util.StringUtil;
  */
 public class DicomEditor extends JFrame {
 
-    private String					windowTitle = "DicomEditor - version 35";
+    private String					windowTitle = "DicomEditor - version 36";
     private MainPanel				mainPanel;
     private JPanel					splitPanel;
     private SourcePanel				sourcePanel;
@@ -87,7 +87,7 @@ public class DicomEditor extends JFrame {
 		pack();
 		positionFrame();
 		setVisible(true);
-		checkImageIOTools();
+		//checkImageIOTools(); //not necessary with new dcm4che
     }
 
 	class MainPanel extends JPanel {

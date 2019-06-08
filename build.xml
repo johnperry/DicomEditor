@@ -69,7 +69,8 @@
 		<jar destfile="${products}/DicomEditor.jar">
 			<manifest>
 				<attribute name="Main-Class" value="org.rsna.dicomeditor.DicomEditor"/>
-				<attribute name="Class-Path" value="dcm4che.jar getopt.jar log4j.jar CTP.jar util.jar"/>
+				<attribute name="Class-Path" 
+					value="dcm4che.jar getopt.jar log4j.jar CTP.jar util.jar jai_imageio-1.2-pre-dr-b04.jar"/>
 			</manifest>
 			<fileset dir="${build}"
 				includes="${dicomeditor}/** icons/**"
@@ -86,6 +87,7 @@
 			<fileset dir="${libraries}" includes="getopt.jar"/>
 			<fileset dir="${libraries}" includes="CTP.jar"/>
 			<fileset dir="${libraries}" includes="util.jar"/>
+			<fileset dir="${libraries}" includes="jai_imageio-1.2-pre-dr-b04.jar"/>
 			<fileset dir="${files}" includes="*.*"/>
 		</copy>
 
