@@ -29,7 +29,7 @@ import org.rsna.util.StringUtil;
  */
 public class DicomEditor extends JFrame {
 
-    private String					windowTitle = "DicomEditor - version 37";
+    private String					windowTitle = "DicomEditor - version 39";
     private MainPanel				mainPanel;
     private JPanel					splitPanel;
     private SourcePanel				sourcePanel;
@@ -48,6 +48,7 @@ public class DicomEditor extends JFrame {
 				new ConsoleAppender(
 					new PatternLayout("%d{HH:mm:ss} %-5p [%c{1}] %m%n")));
 		Logger.getRootLogger().setLevel(Level.INFO);
+		//Logger.getLogger("org.dcm4cheri.data.DcmParserImpl").setLevel(Level.DEBUG);
 		DicomEditor editor = new DicomEditor();
     }
 
